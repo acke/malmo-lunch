@@ -1,5 +1,5 @@
 ---
-description: Pick today's lunch in Malmö (favorites first)
+description: Pick today's lunch in Malmö (most-visited first)
 argument-hint: [area]
 ---
 

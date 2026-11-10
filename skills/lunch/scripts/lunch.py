@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Malmö lunch: today's menus from menydags.se + mylunch.se, fixed-menu places, per-user favorites. Stdlib only.
+"""Malmö lunch: today's menus from menydags.se + mylunch.se, fixed-menu places, per-user visit counts. Stdlib only.
 
-  lunch.py menu [--area NAME]   JSON: favorites first, then the rest by name
-  lunch.py fav list|add|rm SLUG...
+  lunch.py menu [--area NAME]   JSON: most-visited places first (fav), then the rest by name
+  lunch.py go NAME              record a visit to NAME
+  lunch.py undo NAME            remove one recorded visit to NAME
 """
 import datetime
 import gzip
@@ -23,6 +24,7 @@ LABELS = {"idag", "green", "local", "world wide", "asia", "dagens", "vegetariskt
 # mylunch rows that describe a dish rather than name one: 'Serveras med ...', English translations, tag lists
 NOT_DISH = re.compile(r"^(?:serveras|serverad|severas|served)\b|\b(?:with|and|stew|served)\b|^vi erbjuder|^\S+(?: - \S+)+$", re.I)
 TOO_FAR = {"Hyllie", "Limhamn", "Möllevången"}  # areas too far from the office
+TOP_N = 5  # this many most-visited places are listed first
 PREFS = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
                      "malmo-lunch", "prefs.json")
 
@@ -139,7 +141,7 @@ def load_prefs():
         with open(PREFS) as f:
             return json.load(f)
     except FileNotFoundError:
-        return {"favorites": []}
+        return {"visits": {}}
 
 
 def save_prefs(p):
@@ -179,34 +181,36 @@ def menu(area):
     for r in seen.values():  # show whichever of the teaser / dish rows names more dishes, ingredients cut
         teaser = [{"name": s} for s in r["summary"].split(" · ") if s] if not r.get("standing") else []
         r["summary"] = max(summarize(r["dishes"]), summarize(teaser), key=lambda s: s.count(" · ")) or r["summary"]
-    favs = load_prefs()["favorites"]
+    visits = load_prefs().get("visits", {})
     rows = [r for r in seen.values()
             if (r["dishes"] or r["summary"]) and r["area"] not in TOO_FAR]
     if area:
         rows = [r for r in rows if r["area"].lower() == area.lower()]
     for r in rows:
-        r["fav"] = r["slug"] in favs
-    rows.sort(key=lambda r: (not r["fav"], r["name"].lower()))
+        r["visits"] = visits.get(norm(r["name"]), 0)
+    top = sorted((r for r in rows if r["visits"]), key=lambda r: (-r["visits"], r["name"].lower()))[:TOP_N]
+    for r in rows:
+        r["fav"] = r in top
+    rows.sort(key=lambda r: (top.index(r) if r["fav"] else TOP_N, r["name"].lower()))
     print(json.dumps(rows, ensure_ascii=False, indent=1))
 
 
-def fav(action, slugs):
+def visit(name, delta):
     p = load_prefs()
-    if action == "add":
-        p["favorites"] += [s for s in slugs if s not in p["favorites"]]
-    elif action == "rm":
-        p["favorites"] = [s for s in p["favorites"] if s not in slugs]
-    elif action != "list":
-        sys.exit(__doc__)
+    visits = p.setdefault("visits", {})
+    key = norm(name)
+    visits[key] = max(visits.get(key, 0) + delta, 0)
+    if not visits[key]:
+        del visits[key]
     save_prefs(p)
-    print(json.dumps(p["favorites"], ensure_ascii=False))
+    print(json.dumps({name: visits.get(key, 0)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     a = sys.argv[1:]
     if a[:1] == ["menu"]:
         menu(a[2] if a[1:2] == ["--area"] and len(a) > 2 else None)
-    elif a[:1] == ["fav"] and len(a) > 1:
-        fav(a[1], a[2:])
+    elif a[:1] in (["go"], ["undo"]) and len(a) > 1:
+        visit(" ".join(a[1:]), 1 if a[0] == "go" else -1)
     else:
         sys.exit(__doc__)

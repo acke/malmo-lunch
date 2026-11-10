@@ -5,7 +5,7 @@
     {
       "name": "malmo-lunch",
       "source": "./",
-      "description": "Pick today's lunch near the Neo4j Malmö office: menus from local restaurants, per-user favorites on top, interactive choice."
+      "description": "Pick today's lunch near the Neo4j Malmö office: menus from local restaurants, most-visited places on top (learned per user)."
     }
   ]
 }

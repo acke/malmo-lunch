@@ -1,6 +1,6 @@
 # malmo-lunch
 
-Claude Code skill: pick today's lunch in Malmö (Hamnen + Centrum). Lists menus, your favorites first, you choose.
+Claude Code skill: pick today's lunch in Malmö (Hamnen + Centrum). Lists menus, your most-visited places first, you choose.
 
 ## Install
 
@@ -15,6 +15,6 @@ Needs Python 3 and network access to `www.menydags.se` and `www.mylunch.se`.
 
 ## Favorites
 
-Stored per user in `~/.config/malmo-lunch/prefs.json`. Tell the skill "I like X" or pick a place and accept the "add to favorites" prompt.
+Learned automatically: each time you pick a place it counts as a visit, and your 5 most-visited places are listed first. Counts are stored per user in `~/.config/malmo-lunch/prefs.json`.
 
 Spec and contracts: [CLAUDE.md](CLAUDE.md).
