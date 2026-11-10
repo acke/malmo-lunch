@@ -1,6 +1,9 @@
 {
   "name": "malmo-lunch",
-  "owner": { "name": "Knut Funkel" },
+  "owner": {
+    "name": "Knut Funkel"
+  },
+  "description": "Plugins for lunch in Malmö.",
   "plugins": [
     {
       "name": "malmo-lunch",
