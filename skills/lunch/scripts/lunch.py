@@ -16,7 +16,7 @@ import urllib.request
 
 BASE = "https://www.menydags.se/lunch/malmo"
 MAX_PAGES = 6
-TOO_FAR = {"Hyllie", "Limhamn"}  # areas too far from the office
+TOO_FAR = {"Hyllie", "Limhamn", "Möllevången"}  # areas too far from the office
 PREFS = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
                      "malmo-lunch", "prefs.json")
 
