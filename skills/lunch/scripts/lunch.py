@@ -19,6 +19,9 @@ BASE = "https://www.menydags.se/lunch/malmo"
 MAX_PAGES = 6
 MYLUNCH_BASE = "https://www.mylunch.se"
 MYLUNCH = [("/vastr-hamnen/", "Hamnen"), ("/malmo/", "Malmö")]  # (page, area label)
+LABELS = {"idag", "green", "local", "world wide", "asia", "dagens", "vegetariskt", "vegan", "veg"}  # mylunch headings
+# mylunch rows that describe a dish rather than name one: 'Serveras med ...', English translations, tag lists
+NOT_DISH = re.compile(r"^(?:serveras|serverad|severas|served)\b|\b(?:with|and|stew|served)\b|^vi erbjuder|^\S+(?: - \S+)+$", re.I)
 TOO_FAR = {"Hyllie", "Limhamn", "Möllevången"}  # areas too far from the office
 PREFS = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
                      "malmo-lunch", "prefs.json")
@@ -68,7 +71,34 @@ def parse(page):
 
 
 def norm(name):
-    return re.sub(r"[^a-z0-9åäö]", "", html.unescape(name).lower())
+    """Match key across sources: 'Brasserie Sture 1912' == 'Sture', 'Varv Malmö' == 'Varv'."""
+    name = re.sub(r"\b(restaurang|restaurant|brasserie|hotel|malmö|1912)\b", "", html.unescape(name).lower())
+    return re.sub(r"[^a-z0-9åäö]", "", name)
+
+
+def tidy(dish):
+    """Strip source noise from a dish row: 'Onsdag: ' prefix, allergen codes, trailing à-la-carte price."""
+    dish = re.sub(r"^[A-ZÅÄÖ][\wåäö ]{0,20}:\s+", "", dish)  # 'Onsdag: ', 'Husman: ' category prefixes
+    dish = re.sub(r"\s*\([A-ZÅÄÖ](?:,\s*[A-ZÅÄÖ])*\)", "", dish)
+    return dish.strip()
+
+
+def short(dish, cap=45):
+    """Dish name without the ingredient list: 'Kyckling med potatispuré, ärtor' -> 'Kyckling'."""
+    dish = re.split(r"\s+(?:med|serveras|serverad|serverade|samt)\s+", dish)[0].strip()
+    head, _, _ = dish.partition(",")
+    if " " in head.strip():  # 'Bakad lax, sås, potatis' -> 'Bakad lax'; one-word heads are list items, keep the line
+        dish = head.strip()
+    return dish if len(dish) <= cap else dish[:cap - 1].rstrip() + "…"
+
+
+def summarize(dishes, limit=6):
+    names = []
+    for d in dishes:
+        n = short(d["name"])
+        if n and n not in names:
+            names.append(n)
+    return " · ".join(names[:limit])
 
 
 def parse_mylunch(page, area):
@@ -84,11 +114,16 @@ def parse_mylunch(page, area):
         for t, p in rows[start + 1:] if start is not None else []:
             if t.startswith("*") or t.startswith(tuple(days)):
                 break
+            t = tidy(t)
+            # drop section labels ("Idag", "Green") and à-la-carte rows ("Beef tartare 190")
+            if (t.lower() in LABELS or re.search(r"\s\d{3}$", t) or NOT_DISH.search(t)
+                    or any(d["name"] == t for d in dishes)):
+                continue
             dishes.append({"name": t, "desc": "", "price": p.removesuffix("Kr")})
         if name and dishes:
             n = clean(name.group(1))
             yield {"slug": "mylunch-" + norm(n), "name": n, "area": area, "dishes": dishes,
-                   "summary": " · ".join(d["name"] for d in dishes)}
+                   "summary": summarize(dishes)}
 
 
 def standing():
@@ -138,9 +173,12 @@ def menu(area):
                 have["dishes"] = have["dishes"] or r["dishes"]
             elif r["slug"] not in seen:
                 seen[r["slug"]] = by_name[norm(r["name"])] = r
-    for r in standing():
-        if norm(r["name"]) not in by_name:
-            seen[r["slug"]] = r
+    for r in standing():  # standing.json wins over scraped rows of the same place
+        seen = {s: v for s, v in seen.items() if norm(v["name"]) != norm(r["name"])}
+        seen[r["slug"]] = r
+    for r in seen.values():  # show whichever of the teaser / dish rows names more dishes, ingredients cut
+        teaser = [{"name": s} for s in r["summary"].split(" · ") if s] if not r.get("standing") else []
+        r["summary"] = max(summarize(r["dishes"]), summarize(teaser), key=lambda s: s.count(" · ")) or r["summary"]
     favs = load_prefs()["favorites"]
     rows = [r for r in seen.values()
             if (r["dishes"] or r["summary"]) and r["area"] not in TOO_FAR]

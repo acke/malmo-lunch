@@ -1,5 +1,8 @@
 [
   {"name": "Pink Head Noodle Bar", "area": "Hamnen", "note": "Fast meny, ingen daglunch (Malmö Saluhall)"},
   {"name": "Holy Greens", "area": "Hamnen", "note": "Fast meny, ingen daglunch (Malmö Saluhall)"},
-  {"name": "Clemens Kött & Husman", "area": "Hamnen", "note": "Daglunch finns men kan inte hämtas (Malmö Saluhall)"}
+  {"name": "Clemens Kött & Husman", "area": "Hamnen", "note": "Daglunch finns men kan inte hämtas (Malmö Saluhall)"},
+  {"name": "La Fonderie", "area": "Hamnen", "note": "Sajterna visar bara småplock, ingen tillförlitlig daglunch"},
+  {"name": "Ruths", "area": "Malmö Centrum", "note": "Sajterna visar bara småplock, ingen tillförlitlig daglunch"},
+  {"name": "Saltimporten Canteen", "area": "Hamnen", "note": "Sajterna visar bara en rätt, kolla deras egen sida"}
 ]
