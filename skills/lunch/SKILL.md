@@ -25,4 +25,5 @@ All data and state come from `scripts/lunch.py` (path relative to this skill). N
 
 - Favorites are per user (stored locally); don't read or edit other people's.
 - Menus can be stale or missing; say so if `summary` and `dishes` are empty. Don't invent dishes.
-- Fetch needs network access to `www.menydags.se`.
+- Fetch needs network access to `www.menydags.se` and `www.mylunch.se`.
+- `standing: true` rows are fixed-menu places (no daily dishes): show the note, don't invent dishes.

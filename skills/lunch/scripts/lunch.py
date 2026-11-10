@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Malmö lunch: today's menus from menydags.se + per-user favorites. Stdlib only.
+"""Malmö lunch: today's menus from menydags.se + mylunch.se, fixed-menu places, per-user favorites. Stdlib only.
 
   lunch.py menu [--area NAME]   JSON: favorites first, then the rest by name
   lunch.py fav list|add|rm SLUG...
 """
+import datetime
 import gzip
 import html
 import http.client
@@ -16,6 +17,8 @@ import urllib.request
 
 BASE = "https://www.menydags.se/lunch/malmo"
 MAX_PAGES = 6
+MYLUNCH_BASE = "https://www.mylunch.se"
+MYLUNCH = [("/vastr-hamnen/", "Hamnen"), ("/malmo/", "Malmö")]  # (page, area label)
 TOO_FAR = {"Hyllie", "Limhamn", "Möllevången"}  # areas too far from the office
 PREFS = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
                      "malmo-lunch", "prefs.json")
@@ -64,6 +67,38 @@ def parse(page):
         }
 
 
+def norm(name):
+    return re.sub(r"[^a-z0-9åäö]", "", html.unescape(name).lower())
+
+
+def parse_mylunch(page, area):
+    """Today's dishes per restaurant card. Rows: [weekday heading, dishes..., '* * * * *', extras]."""
+    days = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
+    today = days[datetime.date.today().weekday()]
+    for card in page.split('<div class="mi" ')[1:]:
+        name = re.search(r'<h2 title="Öppna sidan[^"]*">(.*?)</h2>', card)
+        rows = [(clean(t), clean(p)) for t, p in
+                re.findall(r'<p class="mim-txt0?">(.*?)</p><p class="mim-prc">(.*?)</p>', card, re.S)]
+        start = next((i for i, (t, _) in enumerate(rows) if t.startswith(today)), None)
+        dishes = []
+        for t, p in rows[start + 1:] if start is not None else []:
+            if t.startswith("*") or t.startswith(tuple(days)):
+                break
+            dishes.append({"name": t, "desc": "", "price": p.removesuffix("Kr")})
+        if name and dishes:
+            n = clean(name.group(1))
+            yield {"slug": "mylunch-" + norm(n), "name": n, "area": area, "dishes": dishes,
+                   "summary": " · ".join(d["name"] for d in dishes)}
+
+
+def standing():
+    """Places with a fixed menu and no daily lunch; shipped in standing.json next to SKILL.md."""
+    with open(os.path.join(os.path.dirname(__file__), "..", "standing.json")) as f:
+        for s in json.load(f):
+            yield {"slug": "standing-" + norm(s["name"]), "name": s["name"], "area": s["area"],
+                   "dishes": [], "summary": s["note"], "standing": True}
+
+
 def load_prefs():
     try:
         with open(PREFS) as f:
@@ -90,6 +125,22 @@ def menu(area):
         if not set(found) - set(seen):
             break
         seen.update(found)
+    by_name = {norm(r["name"]): r for r in seen.values()}
+    for path, label in MYLUNCH:
+        try:
+            extra = list(parse_mylunch(get(MYLUNCH_BASE + path), label))
+        except (urllib.error.URLError, http.client.HTTPException) as e:
+            print(f"mylunch {path} skipped: {e}", file=sys.stderr)
+            continue
+        for r in extra:
+            have = by_name.get(norm(r["name"]))
+            if have:  # mylunch lists the actual dishes; menydags often only a teaser
+                have["dishes"] = have["dishes"] or r["dishes"]
+            elif r["slug"] not in seen:
+                seen[r["slug"]] = by_name[norm(r["name"])] = r
+    for r in standing():
+        if norm(r["name"]) not in by_name:
+            seen[r["slug"]] = r
     favs = load_prefs()["favorites"]
     rows = [r for r in seen.values()
             if (r["dishes"] or r["summary"]) and r["area"] not in TOO_FAR]
