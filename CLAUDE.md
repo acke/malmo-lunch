@@ -4,7 +4,7 @@ Claude Code plugin: pick lunch in Malmö.
 
 ## Contract
 
-- Skill `lunch` (`skills/lunch/SKILL.md`) prints one scrollable numbered list (favorites first); the user replies with a number or name (no AskUserQuestion: 4-option cap); all data via `skills/lunch/scripts/lunch.py`.
+- Skill `lunch` (`skills/lunch/SKILL.md`) prints one scrollable list grouped by area (favorites group first, continuous numbering); the user replies with a number or name (no AskUserQuestion: 4-option cap); all data via `skills/lunch/scripts/lunch.py`.
 - Sources (server-rendered HTML, `robots.txt` allows both, no official API, stdlib-only Python 3):
   - `https://www.menydags.se/lunch/malmo`, paginated `?sida=N`. Primary list, has area labels.
   - `https://www.mylunch.se/vastr-hamnen/` and `/malmo/`. Adds places menydags lacks (e.g. Välfärden, Orkanen) and today's real dish rows. Merged by normalized name; if it fails, menydags alone is used.

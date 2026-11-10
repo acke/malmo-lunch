@@ -1,6 +1,6 @@
 {
   "name": "malmo-lunch",
   "description": "Pick today's lunch near the Neo4j Malmö office: menus from local restaurants, per-user favorites on top, interactive choice.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": { "name": "Knut Funkel" }
 }
