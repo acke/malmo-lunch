@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Malmö lunch: today's menus from menydags.se + mylunch.se, fixed-menu places, per-user visit counts. Stdlib only.
 
-  lunch.py menu [--area NAME]   JSON: most-visited places first (fav), then the rest by name
+  lunch.py list [--area NAME]   today's list as ready-to-print text, fetched live (--json: raw rows)
   lunch.py go NAME              record a visit to NAME
   lunch.py undo NAME            remove one recorded visit to NAME
 """
@@ -179,7 +179,8 @@ def save_prefs(p):
         json.dump(p, f, indent=2, ensure_ascii=False)
 
 
-def menu(area):
+def places(area):
+    """Fetch every source live, merge, and return today's rows, most-visited first. Nothing is cached."""
     seen = {}
     for n in range(1, MAX_PAGES + 1):
         try:
@@ -221,7 +222,30 @@ def menu(area):
     for r in rows:
         r["fav"] = r in top
     rows.sort(key=lambda r: (top.index(r) if r["fav"] else TOP_N, r["name"].lower()))
-    print(json.dumps(rows, ensure_ascii=False, indent=1))
+    return rows
+
+
+def render(rows):
+    """The finished list, ready to paste: most-visited group, then one group per area, continuous numbers."""
+    if not rows:
+        return "No lunch places found today (weekend or holiday?)."
+    out, n = [f"Today is {datetime.date.today():%a %Y-%m-%d}, {len(rows)} places."], 0
+
+    def group(title, group_rows, counts=False):
+        nonlocal n
+        out.extend(["", f"**{title}**"])
+        for r in group_rows:
+            n += 1
+            summary = r["summary"] if len(r["summary"]) <= 100 else r["summary"][:99] + "…"
+            tag = (" (fast meny)" if r.get("standing") else "") + (f" ({r['visits']}×)" if counts else "")
+            out.append(f"{n}. {r['name']}{tag}: {summary}")
+
+    if any(r["fav"] for r in rows):
+        group("★ Most visited", [r for r in rows if r["fav"]], counts=True)
+    rest = [r for r in rows if not r["fav"]]
+    for area in sorted({r["area"] for r in rest}):
+        group(area, [r for r in rest if r["area"] == area])
+    return "\n".join(out + ["", "Which number (or name) are you going to?"])
 
 
 def visit(name, delta):
@@ -237,8 +261,15 @@ def visit(name, delta):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if a[:1] == ["menu"]:
-        menu(a[2] if a[1:2] == ["--area"] and len(a) > 2 else None)
+    if a[:1] == ["list"]:
+        flags = a[1:]
+        as_json = "--json" in flags
+        flags = [f for f in flags if f != "--json"]
+        try:
+            rows = places(flags[1] if flags[:1] == ["--area"] and len(flags) > 1 else None)
+        except (urllib.error.URLError, http.client.HTTPException) as e:
+            sys.exit(f"ERROR: could not fetch menus: {e}")
+        print(json.dumps(rows, ensure_ascii=False, indent=1) if as_json else render(rows))
     elif a[:1] in (["go"], ["undo"]) and len(a) > 1:
         visit(" ".join(a[1:]), 1 if a[0] == "go" else -1)
     else:
