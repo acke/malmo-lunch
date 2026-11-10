@@ -20,5 +20,5 @@ All data and state come from `scripts/lunch.py` (path relative to this skill). N
 - Favorites are never set by hand: the top 5 places by visit count are listed first.
 - Visit counts are per user (stored locally); don't read or edit other people's.
 - Menus can be stale or missing; say so if `summary` and `dishes` are empty. Don't invent dishes.
-- Fetch needs network access to `www.menydags.se` and `www.mylunch.se`.
+- Fetch needs network access to `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`.
 - `standing: true` rows are fixed-menu places: the dishes are their regular menu, not a daily lunch; mark them `(fast meny)` after the name. Picking one still counts as a visit.

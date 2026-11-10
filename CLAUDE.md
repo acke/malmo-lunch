@@ -15,7 +15,7 @@ Claude Code plugin: pick lunch in Malmö.
 - `standing.json` wins over scraped rows of the same name. Always show dish names, never meta notes like "menu unreliable": La Fonderie, Ruths and Saltimporten show their scraped dishes.
 - `lunch.py go NAME` records a visit; `lunch.py undo NAME` removes one. Favorites are learned from visits, never set by hand. The skill calls `go` after the user picks a place.
 - Prefs: `$XDG_CONFIG_HOME/malmo-lunch/prefs.json` (default `~/.config/malmo-lunch/prefs.json`), `{"visits": {normalized-name: count}}`. Keyed by the same normalized name used for merging sources, so counts survive a place moving between sources. One file per user; nothing shared.
-- Network: `www.menydags.se`, `www.mylunch.se`.
+- Network: `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`.
 
 ## Rules
 

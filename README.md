@@ -11,7 +11,7 @@ Claude Code skill: pick today's lunch in Malmö (Hamnen + Centrum). Lists menus,
 
 Then run `/lunch` (or `/lunch Hamnen` to filter by area), or just ask "what's for lunch?". If `/lunch` clashes with another command, use `/malmo-lunch:lunch`.
 
-Needs Python 3 and network access to `www.menydags.se` and `www.mylunch.se`.
+Needs Python 3 and network access to `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`.
 
 ## Favorites
 
