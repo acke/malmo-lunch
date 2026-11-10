@@ -1,8 +1,10 @@
 [
-  {"name": "Pink Head Noodle Bar", "area": "Hamnen", "note": "Fast meny, ingen daglunch (Malmö Saluhall)"},
-  {"name": "Holy Greens", "area": "Hamnen", "note": "Fast meny, ingen daglunch (Malmö Saluhall)"},
-  {"name": "Clemens Kött & Husman", "area": "Hamnen", "note": "Daglunch finns men kan inte hämtas (Malmö Saluhall)"},
-  {"name": "La Fonderie", "area": "Hamnen", "note": "Sajterna visar bara småplock, ingen tillförlitlig daglunch"},
-  {"name": "Ruths", "area": "Malmö Centrum", "note": "Sajterna visar bara småplock, ingen tillförlitlig daglunch"},
-  {"name": "Saltimporten Canteen", "area": "Hamnen", "note": "Sajterna visar bara en rätt, kolla deras egen sida"}
+  {"name": "Pink Head Noodle Bar", "area": "Hamnen", "fixed": true,
+   "dishes": ["Mapo Biang", "Tan Tan", "Shoyu Ramen"],
+   "note": "Fast meny som ändras ofta (menyn laddas av appen weiq.app och kan inte hämtas)"},
+  {"name": "Holy Greens", "area": "Hamnen", "fixed": true,
+   "menu": {"kind": "holygreens", "url": "https://holygreens.se/meny/"}},
+  {"name": "Clemens Kött & Husman", "area": "Hamnen",
+   "menu": {"kind": "clemens", "url": "http://www.clemenskott.se/"},
+   "note": "Veckans lunchmeny kunde inte hämtas"}
 ]

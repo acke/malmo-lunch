@@ -128,12 +128,41 @@ def parse_mylunch(page, area):
                    "summary": summarize(dishes)}
 
 
+def clemens(page):
+    """Veckans Lunchmeny: today's weekday block."""
+    days = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
+    today = days[datetime.date.today().weekday()]
+    return [clean(d) for day, d in re.findall(r'<div class="acme[^"]*">(\w+)</div><div class="italic">(.*?)</div>', page)
+            if day == today]
+
+
+def holygreens(page):
+    """First 5 dishes on the menu page (chain-wide menu, not Saluhall-specific)."""
+    names = [clean(n).capitalize() for n in re.findall(r'<div class="content-wrap"><h3>(.*?)</h3>', page)]
+    return [n for n in names if not n.endswith(" vegansk")][:5]  # vegan variants would use up the slots
+
+
+MENUS = {"clemens": clemens, "holygreens": holygreens}  # standing.json `menu.kind` -> parser
+
+
 def standing():
-    """Places with a fixed menu and no daily lunch; shipped in standing.json next to SKILL.md."""
+    """Places outside the aggregators, from standing.json next to SKILL.md.
+
+    Dishes come from a scraped `menu` page, else a hand-kept `dishes` list. `fixed` marks places
+    with no daily lunch, so the skill can say the dishes are their regular menu.
+    """
     with open(os.path.join(os.path.dirname(__file__), "..", "standing.json")) as f:
-        for s in json.load(f):
-            yield {"slug": "standing-" + norm(s["name"]), "name": s["name"], "area": s["area"],
-                   "dishes": [], "summary": s["note"], "standing": True}
+        entries = json.load(f)
+    for s in entries:
+        names = list(s.get("dishes", []))
+        if "menu" in s:
+            try:
+                names = MENUS[s["menu"]["kind"]](get(s["menu"]["url"])) or names
+            except (urllib.error.URLError, http.client.HTTPException) as e:
+                print(f"{s['name']} menu skipped: {e}", file=sys.stderr)
+        dishes = [{"name": n, "desc": "", "price": ""} for n in names]
+        yield {"slug": "standing-" + norm(s["name"]), "name": s["name"], "area": s["area"], "dishes": dishes,
+               "summary": summarize(dishes) or s.get("note", ""), "standing": s.get("fixed", False)}
 
 
 def load_prefs():
