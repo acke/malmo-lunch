@@ -1,10 +1,31 @@
 [
-  {"name": "Pink Head Noodle Bar", "area": "Hamnen", "fixed": true,
-   "dishes": ["Mapo Biang", "Tan Tan", "Shoyu Ramen"],
-   "note": "Fast meny som ändras ofta (menyn laddas av appen weiq.app och kan inte hämtas)"},
-  {"name": "Holy Greens", "area": "Hamnen", "fixed": true,
-   "menu": {"kind": "holygreens", "url": "https://holygreens.se/meny/"}},
-  {"name": "Clemens Kött & Husman", "area": "Hamnen",
-   "menu": {"kind": "clemens", "url": "http://www.clemenskott.se/"},
-   "note": "Veckans lunchmeny kunde inte hämtas"}
+  {
+    "name": "Pink Head Noodle Bar",
+    "area": "Malmö Centrum",
+    "fixed": true,
+    "dishes": [
+      "Mapo Biang",
+      "Tan Tan",
+      "Shoyu Ramen"
+    ],
+    "note": "Fast meny som ändras ofta (menyn laddas av appen weiq.app och kan inte hämtas)"
+  },
+  {
+    "name": "Holy Greens",
+    "area": "Hamnen",
+    "fixed": true,
+    "menu": {
+      "kind": "holygreens",
+      "url": "https://holygreens.se/meny/"
+    }
+  },
+  {
+    "name": "Clemens Kött & Husman",
+    "area": "Hamnen",
+    "menu": {
+      "kind": "clemens",
+      "url": "http://www.clemenskott.se/"
+    },
+    "note": "Veckans lunchmeny kunde inte hämtas"
+  }
 ]
