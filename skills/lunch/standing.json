@@ -4,11 +4,13 @@
     "area": "Malmö Centrum",
     "fixed": true,
     "dishes": [
+      "Biang Biang Korea",
+      "Shoyu Ramen",
+      "Spicy Miso Ramen",
       "Mapo Biang",
-      "Tan Tan",
-      "Shoyu Ramen"
+      "Tonkotsu Ramen"
     ],
-    "note": "Fast meny som ändras ofta (menyn laddas av appen weiq.app och kan inte hämtas)"
+    "note": "Fast meny (lista läst från deras egen meny 2026-11-10, uppdateras för hand)"
   },
   {
     "name": "Holy Greens",
