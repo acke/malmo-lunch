@@ -74,7 +74,7 @@ def parse(page):
 
 def norm(name):
     """Match key across sources: 'Brasserie Sture 1912' == 'Sture', 'Varv Malmö' == 'Varv'."""
-    name = re.sub(r"\b(restaurang|restaurant|brasserie|hotel|malmö|1912)\b", "", html.unescape(name).lower())
+    name = re.sub(r"\b(kvartersrestaurang|restaurang|restaurant|brasserie|hotel|malmö|1912)\b", "", html.unescape(name).lower())
     return re.sub(r"[^a-z0-9åäö]", "", name)
 
 
