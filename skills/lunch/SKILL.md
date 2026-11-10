@@ -10,8 +10,8 @@ All data and state come from `scripts/lunch.py` (path relative to this skill). N
 ## Flow
 
 1. `python3 scripts/lunch.py menu` → JSON array, favorites (`fav: true`) first. Add `--area <Area>` to filter (e.g. `Hamnen`, `Malmö Centrum`). Fields: `slug`, `name`, `area`, `summary` (today's dishes), `dishes` (detailed, sometimes empty).
-2. Show a short numbered list: `★` for favorites, name, area, summary. Favorites on top.
-3. Ask which to go to with `AskUserQuestion`: favorites first, max 4 options per question; put "Show more" as the last option and page through the rest. Offer area filter if the list is long.
+2. Print ONE numbered list of all places as plain text, so the user can scroll it. Favorites first (`★`), then the rest. Two lines per place: `N. [★ ]name [area]` then indented summary (truncate ~100 chars). Group nothing, hide nothing.
+3. End with one line asking which number (or name) to go to. Don't use `AskUserQuestion`: it caps at 4 options and forces paging. The user replies in chat with a number or name.
 4. Report the choice: name, area, dishes. One line.
 5. If the chosen place is not a favorite, ask once whether to add it: `python3 scripts/lunch.py fav add <slug>`.
 
@@ -19,7 +19,7 @@ All data and state come from `scripts/lunch.py` (path relative to this skill). N
 
 - Show: `python3 scripts/lunch.py fav list`
 - Add / remove: `python3 scripts/lunch.py fav add|rm <slug>...`
-- When the user says "I like X, Y", match names to slugs from `menu` output, then `fav add`.
+- When the user says "I like X, Y" or "fav 3, 7" (numbers from the last list), match to slugs from `menu` output, then `fav add`.
 
 ## Rules
 
