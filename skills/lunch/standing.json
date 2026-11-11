@@ -29,5 +29,30 @@
       "url": "http://www.clemenskott.se/"
     },
     "note": "Veckans lunchmeny kunde inte hämtas"
+  },
+  {
+    "name": "P2",
+    "area": "Hamnen",
+    "menu": {
+      "kind": "p2",
+      "url": "https://restaurangp2.se/"
+    },
+    "note": "Veckans meny kunde inte hämtas"
+  },
+  {
+    "name": "Aro Deli",
+    "area": "Malmö Centrum",
+    "fixed": true,
+    "dishes": [
+      "Forlì",
+      "Sorrento",
+      "Tropea",
+      "Andria",
+      "Ravenna",
+      "Pisa",
+      "Alba",
+      "Napoli"
+    ],
+    "note": "Fast meny, focaccia (lista läst från deras egen meny 2026-11-11, uppdateras för hand)"
   }
 ]

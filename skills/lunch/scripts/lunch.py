@@ -87,7 +87,7 @@ def tidy(dish):
 
 def short(dish, cap=45):
     """Dish name without the ingredient list: 'Kyckling med potatispuré, ärtor' -> 'Kyckling'."""
-    dish = re.split(r"\s+(?:med|serveras|serverad|serverade|samt)\s+", dish)[0].strip()
+    dish = re.split(r"\s+(?:med|serveras|serverad|serverade|samt)\s+", dish)[0].strip(" -–")  # 'Daal makahni - med linser' -> 'Daal makahni'
     head, _, _ = dish.partition(",")
     if " " in head.strip():  # 'Bakad lax, sås, potatis' -> 'Bakad lax'; one-word heads are list items, keep the line
         dish = head.strip()
@@ -128,10 +128,12 @@ def parse_mylunch(page, area):
                    "summary": summarize(dishes)}
 
 
+DAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
+
+
 def clemens(page):
     """Veckans Lunchmeny: today's weekday block."""
-    days = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"]
-    today = days[datetime.date.today().weekday()]
+    today = DAYS[datetime.date.today().weekday()]
     return [clean(d) for day, d in re.findall(r'<div class="acme[^"]*">(\w+)</div><div class="italic">(.*?)</div>', page)
             if day == today]
 
@@ -142,7 +144,13 @@ def holygreens(page):
     return [n for n in names if not n.endswith(" vegansk")][:5]  # vegan variants would use up the slots
 
 
-MENUS = {"clemens": clemens, "holygreens": holygreens}  # standing.json `menu.kind` -> parser
+def p2(page):
+    """Veckans meny: the dishes (Green/Local/World Wide) under today's weekday heading."""
+    m = re.search(r"<h3[^>]*>%s</h3>(.*?)(?:<h3|$)" % DAYS[datetime.date.today().weekday()], page, re.S)
+    return [clean(d) for d in re.findall(r'<div class="lunch_desc">(.*?)</div>', m.group(1))] if m else []
+
+
+MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2}  # standing.json `menu.kind` -> parser
 
 
 def standing():
