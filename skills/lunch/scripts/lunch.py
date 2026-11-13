@@ -159,19 +159,30 @@ def nordrest(page):
     return []
 
 
+def rotation(r):
+    """Weekly menus that repeat in order: today's dishes from menu `first` in the week of `start`, the next menu each week after."""
+    today = datetime.date.today()
+    if today.weekday() > 4:
+        return []
+    weeks = (today - datetime.date.fromisoformat(r["start"])).days // 7
+    return r["menus"][(r["first"] - 1 + weeks) % len(r["menus"])][DAYS[today.weekday()]]
+
+
 MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest}  # standing.json `menu.kind` -> parser
 
 
 def standing():
     """Places outside the aggregators, from standing.json next to SKILL.md.
 
-    Dishes come from a scraped `menu` page, else a hand-kept `dishes` list. `fixed` marks places
+    Dishes come from a scraped `menu` page, a hand-kept `rotation` of weekly menus, else a hand-kept `dishes` list. `fixed` marks places
     with no daily lunch, so the skill can say the dishes are their regular menu.
     """
     with open(os.path.join(os.path.dirname(__file__), "..", "standing.json")) as f:
         entries = json.load(f)
     for s in entries:
         names = list(s.get("dishes", []))
+        if "rotation" in s:
+            names = rotation(s["rotation"]) or names
         if "menu" in s:
             try:
                 names = MENUS[s["menu"]["kind"]](get(s["menu"]["url"])) or names

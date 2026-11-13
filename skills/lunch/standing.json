@@ -81,7 +81,120 @@
   {
     "name": "Masala Kitchen & Bar",
     "area": "Malmö Centrum",
-    "fixed": true,
+    "rotation": {
+      "start": "2026-11-09",
+      "first": 2,
+      "menus": [
+        {
+          "Måndag": [
+            "Garlic Lime Tikka",
+            "Lamb Chettinad",
+            "Tadka Dal"
+          ],
+          "Tisdag": [
+            "Murg Hara Masala",
+            "Lamb Saag",
+            "Paneer Makhni"
+          ],
+          "Onsdag": [
+            "Chicken Coconut Curry",
+            "Shahi Gosht",
+            "Aloo Baingan"
+          ],
+          "Torsdag": [
+            "Murg Lucknowi",
+            "Lamb Hyderabadi",
+            "Pudina Chana Masala"
+          ],
+          "Fredag": [
+            "Palak Chicken",
+            "Lamb Bhuna Masala",
+            "Paneer Kadhai"
+          ]
+        },
+        {
+          "Måndag": [
+            "Murg Chana Masala",
+            "Achari Mirch Gosht",
+            "Aloo Gobi"
+          ],
+          "Tisdag": [
+            "Murg Kali Mirch",
+            "Kashmiri Lamb",
+            "Paneer Jodhpuri"
+          ],
+          "Onsdag": [
+            "Chicken Kadhai",
+            "Lamb Badami",
+            "Dal Makhni"
+          ],
+          "Torsdag": [
+            "Hyderabadi Murg",
+            "Rara Gosht",
+            "Mattar Mushroom"
+          ],
+          "Fredag": [
+            "Murg Methi Malai",
+            "Keema Mattar",
+            "Dal Palak"
+          ]
+        },
+        {
+          "Måndag": [
+            "Chicken Chutney",
+            "Lamb Vindaloo",
+            "Veg Kadhai"
+          ],
+          "Tisdag": [
+            "Jardalo Murg",
+            "Lamb Kadhai",
+            "Mattar Paneer"
+          ],
+          "Onsdag": [
+            "Murg Zaffrani",
+            "Lamb Laal Maas",
+            "Punjabi Veg Masala"
+          ],
+          "Torsdag": [
+            "Chicken Chamba",
+            "Lamb Coconut Curry",
+            "Paneer Achari"
+          ],
+          "Fredag": [
+            "Murg Do Pyaza",
+            "Lamb Lahsuni Nimbu",
+            "Palak Chana Masala"
+          ]
+        },
+        {
+          "Måndag": [
+            "Chicken Tikka Boti",
+            "Lamb Punjabi Curry",
+            "Baingan Mirch Masala"
+          ],
+          "Tisdag": [
+            "Chicken Shahi Korma",
+            "Lamb Chana Boti",
+            "Dal Zucchini"
+          ],
+          "Onsdag": [
+            "Chicken Chettinad",
+            "Seekh Kebab",
+            "Panchratna Dal"
+          ],
+          "Torsdag": [
+            "Chicken Aloo Curry",
+            "Kolhapuri Gosht",
+            "Paneer Khumbi Masala"
+          ],
+          "Fredag": [
+            "Malvani Chicken",
+            "Adraki Lamb Do Pyaza",
+            "Mix Veg Korma"
+          ]
+        }
+      ]
+    },
     "dishes": [
       "Dagens Thali",
       "Subzi Thali",
@@ -92,6 +205,6 @@
       "Rogan Josh",
       "Jhinga Korma"
     ],
-    "note": "Fast meny, ständiga alternativ (lista läst från menybilden på masalakitchen.se/lunch 2026-11-13, uppdateras för hand)"
+    "note": "Veckomenyn kunde inte läsas (menyerna roterar var fjärde vecka, lästa från menybilderna på masalakitchen.se/lunch 2026-11-13)"
   }
 ]
