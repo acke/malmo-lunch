@@ -54,5 +54,28 @@
       "Napoli"
     ],
     "note": "Fast meny, focaccia (lista läst från deras egen meny 2026-11-11, uppdateras för hand)"
+  },
+  {
+    "name": "Restaurang Orkanen",
+    "area": "Hamnen",
+    "menu": {
+      "kind": "nordrest",
+      "url": "https://www.nordrest.se/restaurang/restaurang-orkanen/"
+    },
+    "note": "Veckans buffé kunde inte hämtas"
+  },
+  {
+    "name": "Locali",
+    "area": "Hamnen",
+    "fixed": true,
+    "dishes": [
+      "Gochujang chicken bowl",
+      "Spicy shrimp bowl",
+      "Chili tofu bowl",
+      "Chicken Katsu",
+      "Porkchop Katsu",
+      "Cauliflower Katsu"
+    ],
+    "note": "Fast meny, pokébowls (lista läst från deras egen sida 2026-11-13, uppdateras för hand)"
   }
 ]

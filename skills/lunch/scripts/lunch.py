@@ -150,7 +150,16 @@ def p2(page):
     return [clean(d) for d in re.findall(r'<div class="lunch_desc">(.*?)</div>', m.group(1))] if m else []
 
 
-MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2}  # standing.json `menu.kind` -> parser
+def nordrest(page):
+    """Lunch buffet: the dishes in the first (current week) block under today's weekday heading."""
+    today = DAYS[datetime.date.today().weekday()]
+    for day in re.findall(r'<section class="castit-day[^"]*">(.*?)</section>', page, re.S):
+        if 'data-sv="%s"' % today in day[:400]:
+            return [clean(d) for d in re.findall(r'class="castit-dish__title" data-sv="([^"]*)"', day)]
+    return []
+
+
+MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest}  # standing.json `menu.kind` -> parser
 
 
 def standing():
