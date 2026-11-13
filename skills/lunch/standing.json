@@ -77,5 +77,21 @@
       "Cauliflower Katsu"
     ],
     "note": "Fast meny, pokébowls (lista läst från deras egen sida 2026-11-13, uppdateras för hand)"
+  },
+  {
+    "name": "Masala Kitchen & Bar",
+    "area": "Malmö Centrum",
+    "fixed": true,
+    "dishes": [
+      "Dagens Thali",
+      "Subzi Thali",
+      "Palak Paneer",
+      "Chicken Tandoori",
+      "Butter Chicken",
+      "Chicken Mango Masala",
+      "Rogan Josh",
+      "Jhinga Korma"
+    ],
+    "note": "Fast meny, ständiga alternativ (lista läst från menybilden på masalakitchen.se/lunch 2026-11-13, uppdateras för hand)"
   }
 ]
