@@ -1,6 +1,6 @@
 # malmo-lunch
 
-Claude Code plugin: pick lunch in Malmö. `skills/lunch/` is also a standalone Agent Skills folder: other agents (Codex, Cursor, Gemini CLI) install it by copying that folder or `npx skills add acke/malmo-lunch`; see README. Keep the skill self-contained (no dependency on plugin-only files).
+Agent Skills skill (also packaged as a Claude Code plugin, adds `/lunch`): pick lunch in Malmö. `skills/lunch/` is a standalone folder; any agent (Codex, Cursor, Gemini CLI) can install it by copying that folder or `npx skills add acke/malmo-lunch`; see README. Keep the skill self-contained (no dependency on plugin-only files).
 
 ## Contract
 
