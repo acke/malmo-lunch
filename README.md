@@ -50,6 +50,12 @@ Run `/lunch` (or `/lunch Hamnen` to filter by area). If `/lunch` clashes with an
 
 Python 3 and network access to `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`, `restaurangp2.se`, `www.nordrest.se`.
 
+## Settings
+
+- Language: `lunch.py lang swe` or `lunch.py lang eng` (default `eng`). Stored in `prefs.json`. With `eng` the agent translates dish names.
+- Office location: `lunch.py location set "<address>"` (or `"LAT,LON"`). Stored in `~/.config/malmo-lunch/location.json`, default Anckargripsgatan 3, Malmö.
+- Distance (proof of concept): run `lunch.py geocode` once to look up coordinates (needs `nominatim.openstreetmap.org`, about a minute). Lists then show `· 350 m` straight-line from the office, and `list --sort distance` orders by it. Places the lookup can't find show no distance.
+
 ## Favorites
 
 Learned automatically: each time you pick a place it counts as a visit, and your 5 most-visited places are listed first. Counts are stored per user in `~/.config/malmo-lunch/prefs.json`.

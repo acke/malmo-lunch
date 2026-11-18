@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """Malmö lunch: today's menus from menydags.se + mylunch.se, fixed-menu places, per-user visit counts. Stdlib only.
 
-  lunch.py list [--area NAME]   today's list as ready-to-print text, fetched live (--json: raw rows)
+  lunch.py list [--area NAME] [--sort distance]
+                                today's list as ready-to-print text, fetched live (--json: raw rows)
   lunch.py go NAME              record a visit to NAME
   lunch.py undo NAME            remove one recorded visit to NAME
+  lunch.py lang [eng|swe]       show or set the list language (default eng)
+  lunch.py location             show the office location distances are measured from
+  lunch.py location set TEXT    set it from an address, or "LAT,LON"
+  lunch.py geocode              look up coordinates for places not yet in the cache (1 request/s)
 """
 import datetime
 import gzip
 import html
 import http.client
 import json
+import math
 import os
 import re
 import sys
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 BASE = "https://www.menydags.se/lunch/malmo"
@@ -25,8 +33,25 @@ LABELS = {"idag", "green", "local", "world wide", "asia", "dagens", "vegetariskt
 NOT_DISH = re.compile(r"^(?:serveras|serverad|severas|served)\b|\b(?:with|and|stew|served)\b|^vi erbjuder|^\S+(?: - \S+)+$", re.I)
 TOO_FAR = {"Hyllie", "Limhamn", "Möllevången"}  # areas too far from the office
 TOP_N = 5  # this many most-visited places are listed first
-PREFS = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-                     "malmo-lunch", "prefs.json")
+CONFIG = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "malmo-lunch")
+PREFS = os.path.join(CONFIG, "prefs.json")
+LOCATION = os.path.join(CONFIG, "location.json")  # office the distances are measured from
+GEO = os.path.join(CONFIG, "geo.json")  # geocode cache {normalized name: [lat, lon] | null}
+OFFICE = {"name": "Neo4j Malmö (Anckargripsgatan 3)", "lat": 55.6113, "lon": 12.9944}  # default until `location set`
+NOMINATIM = "https://nominatim.openstreetmap.org/search"
+MALMO_BOX = "12.85,55.65,13.15,55.50"  # left,top,right,bottom: bounds geocoding so a name can't match another city
+
+LANGS = ("eng", "swe")
+TEXT = {
+    "eng": {"today": "Today is {day} {date}, {n} places.", "fav": "★ Most visited", "fixed": "fixed menu",
+            "ask": "Which number (or name) are you going to?",
+            "none": "No lunch places found today (weekend or holiday?).",
+            "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]},
+    "swe": {"today": "Idag är det {day} {date}, {n} ställen.", "fav": "★ Mest besökta", "fixed": "fast meny",
+            "ask": "Vilket nummer (eller namn) går du till?",
+            "none": "Inga lunchställen hittades idag (helg eller helgdag?).",
+            "days": ["mån", "tis", "ons", "tor", "fre", "lör", "sön"]},
+}
 
 CARD = re.compile(r'<a [^>]*href="/restaurang/([^"]+)"[^>]*><h3[^>]*>(.*?)</h3>')
 AREA = re.compile(r'<p[^>]*><span[^>]*>(?:\s|<!-- -->)*([^<]+)</span></p>')
@@ -210,22 +235,94 @@ def standing():
                "summary": summarize(dishes) or s.get("note", ""), "standing": s.get("fixed", False)}
 
 
-def load_prefs():
+def read_json(path, default):
     try:
-        with open(PREFS) as f:
+        with open(path) as f:
             return json.load(f)
     except FileNotFoundError:
-        return {"visits": {}}
+        return default
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def load_prefs():
+    return read_json(PREFS, {"visits": {}})
 
 
 def save_prefs(p):
-    os.makedirs(os.path.dirname(PREFS), exist_ok=True)
-    with open(PREFS, "w") as f:
-        json.dump(p, f, indent=2, ensure_ascii=False)
+    write_json(PREFS, p)
 
 
-def places(area):
-    """Fetch every source live, merge, and return today's rows, most-visited first. Nothing is cached."""
+def lang():
+    return load_prefs().get("lang", LANGS[0])
+
+
+def set_lang(value):
+    p = load_prefs()
+    p["lang"] = value
+    save_prefs(p)
+
+
+def office():
+    return read_json(LOCATION, OFFICE)
+
+
+def geocode_text(text, bounded):
+    """First Nominatim hit for `text` as [lat, lon], or None. `bounded` limits it to the Malmö box."""
+    q = {"format": "jsonv2", "limit": 1, "countrycodes": "se", "q": text}
+    if bounded:
+        q.update(viewbox=MALMO_BOX, bounded=1)
+    hits = json.loads(get(f"{NOMINATIM}?{urllib.parse.urlencode(q)}"))
+    return [float(hits[0]["lat"]), float(hits[0]["lon"])] if hits else None
+
+
+def set_location(text):
+    """Store the office as `LAT,LON`, or geocode `text` as an address."""
+    m = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*", text)
+    point = [float(m.group(1)), float(m.group(2))] if m else geocode_text(text, bounded=False)
+    if not point:
+        sys.exit(f"ERROR: no match for {text!r}")
+    loc = {"name": text, "lat": point[0], "lon": point[1]}
+    write_json(LOCATION, loc)
+    return loc
+
+
+def metres(a, b):
+    """Straight-line distance between two [lat, lon] points (haversine)."""
+    p1, p2 = math.radians(a[0]), math.radians(b[0])
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2
+    return 2 * 6371000 * math.asin(math.sqrt(h))
+
+
+def geocode_missing(rows):
+    """Look up places absent from the cache, 1 request/s (Nominatim's limit). A miss is cached as null."""
+    cache = read_json(GEO, {})
+    todo = [r for r in rows if norm(r["name"]) not in cache]
+    for i, r in enumerate(todo):
+        if i:
+            time.sleep(1.1)
+        try:
+            cache[norm(r["name"])] = geocode_text(f"{r['name']}, Malmö", bounded=True)
+        except (urllib.error.URLError, http.client.HTTPException, ValueError) as e:
+            print(f"geocode {r['name']} skipped: {e}", file=sys.stderr)
+            continue
+        write_json(GEO, cache)
+    return len(todo), sum(1 for r in rows if cache.get(norm(r["name"])))
+
+
+def short_distance(m):
+    return f"{round(m, -1):.0f} m" if m < 1000 else f"{m / 1000:.1f} km"
+
+
+def places(area, by_distance=False):
+    """Fetch every source live, merge, and return today's rows, most-visited first. Menus are never cached.
+
+    `distance_m` is the straight-line distance from the office, from coordinates cached by `geocode`; None if unknown.
+    """
     seen = {}
     for n in range(1, MAX_PAGES + 1):
         try:
@@ -261,20 +358,28 @@ def places(area):
             if (r["dishes"] or r["summary"]) and r["area"] not in TOO_FAR]
     if area:
         rows = [r for r in rows if r["area"].lower() == area.lower()]
+    cache, here = read_json(GEO, {}), office()
     for r in rows:
         r["visits"] = visits.get(norm(r["name"]), 0)
+        point = cache.get(norm(r["name"]))
+        r["distance_m"] = round(metres([here["lat"], here["lon"]], point)) if point else None
     top = sorted((r for r in rows if r["visits"]), key=lambda r: (-r["visits"], r["name"].lower()))[:TOP_N]
     for r in rows:
         r["fav"] = r in top
-    rows.sort(key=lambda r: (top.index(r) if r["fav"] else TOP_N, r["name"].lower()))
+    far = float("inf")  # places without coordinates sort last
+    rows.sort(key=lambda r: (top.index(r) if r["fav"] else TOP_N,
+                             (r["distance_m"] if r["distance_m"] is not None else far) if by_distance else 0,
+                             r["name"].lower()))
     return rows
 
 
 def render(rows):
     """The finished list, ready to paste: most-visited group, then one group per area, continuous numbers."""
+    t = TEXT[lang()]
     if not rows:
-        return "No lunch places found today (weekend or holiday?)."
-    out, n = [f"Today is {datetime.date.today():%a %Y-%m-%d}, {len(rows)} places."], 0
+        return t["none"]
+    today = datetime.date.today()
+    out, n = [t["today"].format(day=t["days"][today.weekday()], date=today.isoformat(), n=len(rows))], 0
 
     def group(title, group_rows, counts=False):
         nonlocal n
@@ -282,15 +387,16 @@ def render(rows):
         for r in group_rows:
             n += 1
             summary = r["summary"] if len(r["summary"]) <= 100 else r["summary"][:99] + "…"
-            tag = (" (fast meny)" if r.get("standing") else "") + (f" ({r['visits']}×)" if counts else "")
-            out.append(f"{n}. {r['name']}{tag}: {summary}")
+            tag = (f" ({t['fixed']})" if r.get("standing") else "") + (f" ({r['visits']}×)" if counts else "")
+            dist = f" · {short_distance(r['distance_m'])}" if r["distance_m"] is not None else ""
+            out.append(f"{n}. {r['name']}{tag}{dist}: {summary}")
 
     if any(r["fav"] for r in rows):
-        group("★ Most visited", [r for r in rows if r["fav"]], counts=True)
+        group(t["fav"], [r for r in rows if r["fav"]], counts=True)
     rest = [r for r in rows if not r["fav"]]
     for area in sorted({r["area"] for r in rest}):
         group(area, [r for r in rest if r["area"] == area])
-    return "\n".join(out + ["", "Which number (or name) are you going to?"])
+    return "\n".join(out + ["", t["ask"]])
 
 
 def visit(name, delta):
@@ -309,13 +415,31 @@ if __name__ == "__main__":
     if a[:1] == ["list"]:
         flags = a[1:]
         as_json = "--json" in flags
-        flags = [f for f in flags if f != "--json"]
+        by_distance = "--sort" in flags and flags[flags.index("--sort") + 1:][:1] == ["distance"]
+        area = flags[flags.index("--area") + 1] if "--area" in flags[:-1] else None
         try:
-            rows = places(flags[1] if flags[:1] == ["--area"] and len(flags) > 1 else None)
+            rows = places(area, by_distance)
         except (urllib.error.URLError, http.client.HTTPException) as e:
             sys.exit(f"ERROR: could not fetch menus: {e}")
         print(json.dumps(rows, ensure_ascii=False, indent=1) if as_json else render(rows))
     elif a[:1] in (["go"], ["undo"]) and len(a) > 1:
         visit(" ".join(a[1:]), 1 if a[0] == "go" else -1)
+    elif a[:1] == ["lang"] and len(a) <= 2:
+        if len(a) == 2:
+            if a[1] not in LANGS:
+                sys.exit(f"ERROR: language must be one of {', '.join(LANGS)}")
+            set_lang(a[1])
+        print(lang())
+    elif a[:1] == ["location"] and (len(a) == 1 or a[1] == "set" and len(a) > 2):
+        try:
+            print(json.dumps(set_location(" ".join(a[2:])) if len(a) > 1 else office(), ensure_ascii=False))
+        except (urllib.error.URLError, http.client.HTTPException, ValueError) as e:
+            sys.exit(f"ERROR: could not look up location: {e}")
+    elif a == ["geocode"]:
+        try:
+            asked, known = geocode_missing(places(None))
+        except (urllib.error.URLError, http.client.HTTPException) as e:
+            sys.exit(f"ERROR: could not fetch menus: {e}")
+        print(json.dumps({"looked_up": asked, "with_coordinates": known}))
     else:
         sys.exit(__doc__)
