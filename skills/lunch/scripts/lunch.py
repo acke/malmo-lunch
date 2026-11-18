@@ -173,20 +173,20 @@ class _Widgets(html.parser.HTMLParser):
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.divs, self.rows = [], []  # divs: (hidden, panel, widget type or None) per open box
+        self.divs, self.rows = [], []  # divs: (tag, hidden, panel, widget type or None) per open box
         self.text = None  # text of the open visible widget
-        self.heads, self.head = [], None  # visible h1-h6 texts anywhere ('Vecka 47' is a bare h2 in a shortcode widget)
+        self.heads, self.head = [], None  # visible (h1-h6 text, panel) anywhere ('Vecka 47' is a bare h2 in a shortcode widget)
         self.seen = {}  # panel -> all its visible text
 
     def handle_starttag(self, tag, attrs):
         if self.text is not None and tag in ("br", "p", "div", "h1", "h2", "h3", "h4", "li"):
             self.text.append(" ")
-        if re.fullmatch(r"h[1-6]", tag) and not (self.divs and self.divs[-1][0]):
+        if re.fullmatch(r"h[1-6]", tag) and not (self.divs and self.divs[-1][1]):
             self.head = []
         if tag not in BOXES:
             return
         a = dict(attrs)
-        hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
+        hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][1])
         # data-tab-index is 1-5 for Monday to Friday on every version of the page; the ids were renamed in 2026
         panel = (a.get("data-tab-index"), a.get("aria-labelledby")) if a.get("role") == "tabpanel" else None
         widget = (a.get("data-widget_type") or "").split(".")[0]
@@ -194,28 +194,29 @@ class _Widgets(html.parser.HTMLParser):
             self.text = []
         else:
             widget = None  # layout widgets (nested-tabs, shortcode, icon) hold other widgets or no menu text
-        self.divs.append((hidden, panel or (self.divs[-1][1] if self.divs else None), widget))
+        self.divs.append((tag, hidden, panel or (self.divs[-1][2] if self.divs else None), widget))
 
     def handle_endtag(self, tag):
         if re.fullmatch(r"h[1-6]", tag) and self.head is not None:
-            self.heads.append(re.sub(r"\s+", " ", "".join(self.head)).strip())
+            self.heads.append((re.sub(r"\s+", " ", "".join(self.head)).strip(), self.divs[-1][2] if self.divs else None))
             self.head = None
-        if tag not in BOXES or not self.divs:
-            return
-        _, panel, widget = self.divs.pop()
-        if widget:
-            text = re.sub(r"\s+", " ", "".join(self.text)).strip()
-            if text:
-                self.rows.append((widget, text, panel))
-            self.text = None
+        # close back to the nearest open box of this tag, like a browser; a stray end tag with no match is ignored
+        opened = [i for i, d in enumerate(self.divs) if d[0] == tag] if tag in BOXES else []
+        while opened and len(self.divs) > opened[-1]:
+            _, _, panel, widget = self.divs.pop()
+            if widget:
+                text = re.sub(r"\s+", " ", "".join(self.text)).strip()
+                if text:
+                    self.rows.append((widget, text, panel))
+                self.text = None
 
     def handle_data(self, data):
         if self.text is not None:
             self.text.append(data)
         if self.head is not None:
             self.head.append(data)
-        if self.divs and not self.divs[-1][0]:
-            self.seen[self.divs[-1][1]] = self.seen.get(self.divs[-1][1], "") + data
+        if self.divs and not self.divs[-1][1]:
+            self.seen[self.divs[-1][2]] = self.seen.get(self.divs[-1][2], "") + data
 
 
 def miamarias(page):
@@ -229,11 +230,11 @@ def miamarias(page):
     except Exception as e:  # older html.parser raises AssertionError on some malformed markup; one bad page must not break the list
         print(f"miamarias page not parsed: {e!r}", file=sys.stderr)
         return []
-    week = next((m for text in v.heads for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
+    week = next((m for text, _ in v.heads for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
     if not week or int(week.group(1)) != today.isocalendar().week:
         return []  # the owner leaves last week's menu up (or hides the week) through closures
-    if any(re.search(r"st[äa]ng[dt]", h, re.I) for h in v.heads):
-        return []  # a pre-placed closure banner ('Semesterstängt v. 28–32') is shown; since 2026 'Vecka N' may be printed by a shortcode
+    if any(re.search(r"st[äa]ng[dt]", h, re.I) for h, panel in v.heads if panel is None):
+        return []  # a pre-placed closure banner outside the tabs ('Semesterstängt v. 28–32') is shown; since 2026 'Vecka N' may be printed by a shortcode
     index = str(today.weekday() + 1)
     tab = next((panel for _, _, panel in v.rows if panel and panel[0] == index), None)  # the first visible tab set only
     if not tab or re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
