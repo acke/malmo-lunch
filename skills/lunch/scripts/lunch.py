@@ -159,6 +159,23 @@ def nordrest(page):
     return []
 
 
+def kalhuvet(page):
+    """Today's two dishes under the weekday <h4>, only while the page's "V.NN" label is the current ISO week (the menu is replaced weekly)."""
+    today = datetime.date.today()
+    week = re.search(r"V\.\s*(\d+)", clean(page))
+    if not week or int(week.group(1)) != today.isocalendar()[1]:
+        return []
+    m = re.search(r"<h4[^>]*>\s*%s\s*</h4>(.*?)(?:<h4|$)" % DAYS[today.weekday()], page, re.S | re.I)
+    return [clean(d).lstrip("- ") for d in re.findall(r"<p[^>]*>(.*?)</p>", m.group(1))] if m else []
+
+
+def twoforks(page):
+    """Lunch bowls (No. 1-3, the same all week, changed seasonally): Mon-Fri only, Saturday has no bowls."""
+    if datetime.date.today().weekday() > 4:
+        return []
+    return [clean(d) for d in re.findall(r"<h2[^>]*>No\. \d+</h2><p[^>]*>(.*?)</p>", page)]
+
+
 def rotation(r):
     """Weekly menus that repeat in order: today's dishes from menu `first` in the week of `start`, the next menu each week after."""
     today = datetime.date.today()
@@ -168,7 +185,7 @@ def rotation(r):
     return r["menus"][(r["first"] - 1 + weeks) % len(r["menus"])][DAYS[today.weekday()]]
 
 
-MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest}  # standing.json `menu.kind` -> parser
+MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest, "kalhuvet": kalhuvet, "twoforks": twoforks}  # standing.json `menu.kind` -> parser
 
 
 def standing():
