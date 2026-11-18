@@ -15,7 +15,10 @@ Agent Skills skill (also packaged as a Claude Code plugin, adds `/lunch`): pick 
 - `standing.json` wins over scraped rows of the same name. Always show dish names, never meta notes like "menu unreliable": La Fonderie, Ruths and Saltimporten show their scraped dishes.
 - `lunch.py go NAME` records a visit; `lunch.py undo NAME` removes one. Favorites are learned from visits, never set by hand. The skill calls `go` after the user picks a place.
 - Prefs: `$XDG_CONFIG_HOME/malmo-lunch/prefs.json` (default `~/.config/malmo-lunch/prefs.json`), `{"visits": {normalized-name: count}}`. Keyed by the same normalized name used for merging sources, so counts survive a place moving between sources. One file per user; nothing shared.
-- Network: `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`, `restaurangp2.se`, `www.nordrest.se`, `www.kalhuvet.se`, `www.twoforks.se`.
+- Language: `prefs.json` also holds `{"lang": "eng"|"swe"}` (default `eng`); `lunch.py lang [eng|swe]` shows or sets it. The script translates only its own text (header, group titles, question, `fast meny`/`fixed menu`, weekday). Dish names and notes stay as scraped; with `eng` the skill translates them when printing, with `swe` it prints unchanged.
+- Office location: `$XDG_CONFIG_HOME/malmo-lunch/location.json`, `{"name", "lat", "lon"}`, separate from prefs. Default (no file) is Anckargripsgatan 3, Malmö. `lunch.py location` shows it, `location set TEXT` geocodes an address or takes `"LAT,LON"`.
+- Distance (PoC): `lunch.py geocode` looks up each listed place via Nominatim (`"<name>, Malmö"`, bounded to a Malmö box, 1 request/s) and caches `{normalized name: [lat, lon] | null}` in `geo.json`; misses are cached as null. `list` never calls the network for this: it shows ` · 350 m` (straight-line haversine from the office) for cached places only, and `--sort distance` orders by it within each group (no coordinates last). `--json` rows carry `distance_m` (null if unknown).
+- Network: `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`, `restaurangp2.se`, `www.nordrest.se`, `www.kalhuvet.se`, `www.twoforks.se`, `nominatim.openstreetmap.org` (geocoding only, never on `list`).
 
 ## Rules
 

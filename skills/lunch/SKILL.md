@@ -11,10 +11,16 @@ The script `scripts/lunch.py` (relative to this skill's base directory) fetches 
 
 ## Flow
 
-1. Run `python3 scripts/lunch.py list`. Add `--area <Area>` only if the user named one (`Hamnen`, `Malmö Centrum`; `/lunch Hamnen` passes it as an argument).
-2. Print the script's output as your reply, unchanged, as plain chat text. It already ends with the question. Don't use `AskUserQuestion` here: it takes at most 4 options, which forces paging through 40 places, while one long list can be scrolled.
+1. Run `python3 scripts/lunch.py lang && python3 scripts/lunch.py list`. The first line is the language (`eng` or `swe`). Add `--area <Area>` only if the user named one (`Hamnen`, `Malmö Centrum`; `/lunch Hamnen` passes it as an argument). Add `--sort distance` if they ask for the closest places.
+2. Print the list (everything after the language line) as your reply, as plain chat text. It already ends with the question. Only change: with `eng`, translate Swedish dish names and notes to English; keep restaurant names, numbers, order, distances and line layout as they are. With `swe`, print unchanged. Don't use `AskUserQuestion` here: it takes at most 4 options, which forces paging through 40 places, while one long list can be scrolled.
 3. When the user answers with a number or name, report the choice in one line (name, area, dishes from the list) and record it: `python3 scripts/lunch.py go "<name>"`. Don't ask first. The counts are how favorites are learned, and a confirmation step would make people skip it.
 4. If they say they went somewhere else, or picked wrong: `python3 scripts/lunch.py undo "<name>"`, then `go` the right one.
+
+## Settings
+
+- **Language:** "switch to Swedish / English" → `python3 scripts/lunch.py lang swe` (or `eng`), then re-run the list.
+- **Distance:** places show ` · 350 m` (straight line from the office) once their coordinates are cached. If none show, or the user asks for distances, run `python3 scripts/lunch.py geocode` once (about a minute, calls nominatim.openstreetmap.org), then list again. Places the lookup can't find show no distance.
+- **Office location:** "I'm at / change the office to X" → `python3 scripts/lunch.py location set "<address>"` (or `"LAT,LON"`); `location` shows the current one. Separate from the language and visit prefs.
 
 ## When things go wrong
 
@@ -26,7 +32,7 @@ The script `scripts/lunch.py` (relative to this skill's base directory) fetches 
 
 ## Anti-patterns
 
-- Retyping, reordering, shortening or "improving" the list.
+- Retyping, reordering, shortening or "improving" the list (beyond the `eng` dish translation).
 - Calling `go` when the user is only browsing ("what's there?") and hasn't chosen.
 - Adding a manual "save favorite" step. Favorites come from visits only.
 - Reading or showing another person's `prefs.json`.
