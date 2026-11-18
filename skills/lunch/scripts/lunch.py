@@ -160,43 +160,57 @@ def nordrest(page):
     return []
 
 
-class _Visible(html.parser.HTMLParser):
-    """Visible h2/p texts of an Elementor page, each tagged with its tab panel as (data-tab-index, aria-labelledby), or None.
+class _Widgets(html.parser.HTMLParser):
+    """Visible Elementor widgets as (widget type, text, tab panel) rows; panel is (data-tab-index, aria-labelledby) or None.
 
-    Tracks the <div> nesting, so everything inside a widget or container hidden on desktop is skipped
-    and a tab panel ends where its own div closes.
+    Reads whole widgets by their data-widget_type, so the owner's choice of tags inside one (h2 or h3, p or span) doesn't
+    matter. Tracks the <div> nesting, so everything inside a widget or container hidden on desktop is skipped and a tab
+    panel ends where its own div closes.
     """
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.divs, self.rows, self.text = [], [], None  # divs: (hidden, panel) per open div
-        self.seen = {}  # panel -> all its visible text, any tag
+        self.divs, self.rows = [], []  # divs: (hidden, panel, widget type or None) per open div
+        self.text = None  # text of the open visible widget
+        self.heads, self.head = [], None  # visible h1-h6 texts anywhere ('Vecka 47' is a bare h2 in a shortcode widget)
+        self.seen = {}  # panel -> all its visible text
 
     def handle_starttag(self, tag, attrs):
-        a = dict(attrs)
-        if tag == "div":
-            hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
-            # the index is 1-5 for Monday to Friday; the ids were renamed in 2026 ('e-n-tab-title-1259795101' -> 'monday-tab')
-            panel = (a.get("data-tab-index"), a.get("aria-labelledby")) if a.get("role") == "tabpanel" else None
-            self.divs.append((hidden, panel or (self.divs[-1][1] if self.divs else None)))
-        elif tag in ("h2", "p"):
-            self.text = []
-        elif tag == "br" and self.text is not None:
+        if self.text is not None and tag in ("br", "p", "div", "h1", "h2", "h3", "h4", "li"):
             self.text.append(" ")
+        if re.fullmatch(r"h[1-6]", tag) and not (self.divs and self.divs[-1][0]):
+            self.head = []
+        if tag != "div":
+            return
+        a = dict(attrs)
+        hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
+        # data-tab-index is 1-5 for Monday to Friday on every version of the page; the ids were renamed in 2026
+        panel = (a.get("data-tab-index"), a.get("aria-labelledby")) if a.get("role") == "tabpanel" else None
+        widget = (a.get("data-widget_type") or "").split(".")[0]
+        if widget in ("heading", "text-editor") and not hidden and self.text is None:
+            self.text = []
+        else:
+            widget = None  # layout widgets (nested-tabs, shortcode, icon) hold other widgets or no menu text
+        self.divs.append((hidden, panel or (self.divs[-1][1] if self.divs else None), widget))
 
     def handle_endtag(self, tag):
-        if tag == "div" and self.divs:
-            self.divs.pop()
-        elif tag in ("h2", "p") and self.text is not None:
-            hidden, panel = self.divs[-1] if self.divs else (False, None)
+        if re.fullmatch(r"h[1-6]", tag) and self.head is not None:
+            self.heads.append(re.sub(r"\s+", " ", "".join(self.head)).strip())
+            self.head = None
+        if tag != "div" or not self.divs:
+            return
+        _, panel, widget = self.divs.pop()
+        if widget:
             text = re.sub(r"\s+", " ", "".join(self.text)).strip()
-            if text and not hidden:
-                self.rows.append((tag, text, panel))
+            if text:
+                self.rows.append((widget, text, panel))
             self.text = None
 
     def handle_data(self, data):
         if self.text is not None:
             self.text.append(data)
+        if self.head is not None:
+            self.head.append(data)
         if self.divs and not self.divs[-1][0]:
             self.seen[self.divs[-1][1]] = self.seen.get(self.divs[-1][1], "") + data
 
@@ -206,25 +220,26 @@ def miamarias(page):
     today = datetime.date.today()
     if today.weekday() > 4:
         return []
-    v = _Visible()
+    v = _Widgets()
     try:
         v.feed(page)
     except Exception as e:  # older html.parser raises AssertionError on some malformed markup; one bad page must not break the list
         print(f"miamarias page not parsed: {e!r}", file=sys.stderr)
         return []
-    week = next((m for t, text, _ in v.rows if t == "h2" for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
+    week = next((m for text in v.heads for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
     if not week or int(week.group(1)) != today.isocalendar().week:
         return []  # the owner leaves last week's menu up (or hides the week) through closures
     index = str(today.weekday() + 1)
     tab = next((panel for _, _, panel in v.rows if panel and panel[0] == index), None)  # the first visible tab set only
-    rows = [(t, text) for t, text, panel in v.rows if panel == tab and tab]
-    if re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
+    if not tab or re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
         return []  # closed today: 'Stängt', 'Julstängt', 'restaurangen är stängd', in any visible tag
     dishes, head = {}, None
-    for t, text in rows:  # each heading is followed by its dish paragraph, then the price paragraph
-        if t == "h2":
+    for kind, text, panel in v.rows:  # each heading widget is followed by its dish text widget, then the price widget
+        if panel != tab:
+            continue
+        if kind == "heading":
             head = text
-        elif head and head not in dishes and not re.fullmatch(r"[\d\s]+:-", text):
+        elif kind == "text-editor" and head and head not in dishes and not re.fullmatch(r"[\d\s]+:-", text):
             dishes[head] = re.sub(r"^\w+!\s*", "", text)  # 'Schnitzelfredag! Schnitzel Milanese ...' -> 'Schnitzel Milanese ...'
     return list(dishes.values())
 
