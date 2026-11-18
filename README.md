@@ -48,7 +48,7 @@ Run `/lunch` (or `/lunch Hamnen` to filter by area). If `/lunch` clashes with an
 
 ## Requirements
 
-Python 3 and network access to `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`, `restaurangp2.se`, `www.nordrest.se`.
+Python 3 and network access to `www.menydags.se`, `www.mylunch.se`, `holygreens.se`, `www.clemenskott.se`, `restaurangp2.se`, `www.nordrest.se`, `miamarias.nu`.
 
 ## Favorites
 

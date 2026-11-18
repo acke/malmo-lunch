@@ -8,6 +8,7 @@
 import datetime
 import gzip
 import html
+import html.parser
 import http.client
 import json
 import os
@@ -87,7 +88,7 @@ def tidy(dish):
 
 def short(dish, cap=45):
     """Dish name without the ingredient list: 'Kyckling med potatispuré, ärtor' -> 'Kyckling'."""
-    dish = re.split(r"\s+(?:med|serveras|serverad|serverade|samt)\s+", dish)[0].strip(" -–")  # 'Daal makahni - med linser' -> 'Daal makahni'
+    dish = re.split(r"\s+(?:med|serveras|serverad|serverade|samt)\s+", dish, flags=re.I)[0].strip(" -–")  # 'Daal makahni - med linser' -> 'Daal makahni'
     head, _, _ = dish.partition(",")
     if " " in head.strip():  # 'Bakad lax, sås, potatis' -> 'Bakad lax'; one-word heads are list items, keep the line
         dish = head.strip()
@@ -159,6 +160,73 @@ def nordrest(page):
     return []
 
 
+class _Visible(html.parser.HTMLParser):
+    """Visible h2/p texts of an Elementor page, each tagged with its weekday tab panel ('monday-tab', or None).
+
+    Tracks the <div> nesting, so everything inside a widget or container hidden on desktop is skipped
+    and a tab panel ends where its own div closes.
+    """
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.divs, self.rows, self.text = [], [], None  # divs: (hidden, panel) per open div
+        self.seen = {}  # panel -> all its visible text, any tag
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "div":
+            hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
+            panel = a.get("aria-labelledby") if a.get("role") == "tabpanel" else None
+            self.divs.append((hidden, panel or (self.divs[-1][1] if self.divs else None)))
+        elif tag in ("h2", "p"):
+            self.text = []
+        elif tag == "br" and self.text is not None:
+            self.text.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag == "div" and self.divs:
+            self.divs.pop()
+        elif tag in ("h2", "p") and self.text is not None:
+            hidden, panel = self.divs[-1] if self.divs else (False, None)
+            text = re.sub(r"\s+", " ", "".join(self.text)).strip()
+            if text and not hidden:
+                self.rows.append((tag, text, panel))
+            self.text = None
+
+    def handle_data(self, data):
+        if self.text is not None:
+            self.text.append(data)
+        if self.divs and not self.divs[-1][0]:
+            self.seen[self.divs[-1][1]] = self.seen.get(self.divs[-1][1], "") + data
+
+
+def miamarias(page):
+    """Weekly menu tabs (Fisk, Kött, Vegetariskt, Torsdagens soppa): today's tab, only if the visible 'Vecka N' is this ISO week."""
+    today = datetime.date.today()
+    if today.weekday() > 4:
+        return []
+    v = _Visible()
+    try:
+        v.feed(page)
+    except Exception as e:  # older html.parser raises AssertionError on some malformed markup; one bad page must not break the list
+        print(f"miamarias page not parsed: {e!r}", file=sys.stderr)
+        return []
+    week = next((m for t, text, _ in v.rows if t == "h2" for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
+    if not week or int(week.group(1)) != today.isocalendar().week:
+        return []  # the owner leaves last week's menu up (or hides the week) through closures
+    tab = ["monday", "tuesday", "wednesday", "thursday", "friday"][today.weekday()] + "-tab"
+    rows = [(t, text) for t, text, panel in v.rows if panel == tab]
+    if re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
+        return []  # closed today: 'Stängt', 'Julstängt', 'restaurangen är stängd', in any visible tag
+    dishes, head = {}, None
+    for t, text in rows:  # each heading is followed by its dish paragraph, then the price paragraph
+        if t == "h2":
+            head = text
+        elif head and head not in dishes and not re.fullmatch(r"[\d\s]+:-", text):
+            dishes[head] = re.sub(r"^\w+!\s*", "", text)  # 'Schnitzelfredag! Schnitzel Milanese ...' -> 'Schnitzel Milanese ...'
+    return list(dishes.values())
+
+
 def rotation(r):
     """Weekly menus that repeat in order: today's dishes from menu `first` in the week of `start`, the next menu each week after."""
     today = datetime.date.today()
@@ -168,7 +236,7 @@ def rotation(r):
     return r["menus"][(r["first"] - 1 + weeks) % len(r["menus"])][DAYS[today.weekday()]]
 
 
-MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest}  # standing.json `menu.kind` -> parser
+MENUS = {"clemens": clemens, "holygreens": holygreens, "p2": p2, "nordrest": nordrest, "miamarias": miamarias}  # standing.json `menu.kind` -> parser
 
 
 def standing():
