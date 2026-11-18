@@ -206,5 +206,23 @@
       "Jhinga Korma"
     ],
     "note": "Veckomenyn kunde inte läsas (menyerna roterar var fjärde vecka, lästa från menybilderna på masalakitchen.se/lunch 2026-11-13)"
+  },
+  {
+    "name": "Kålhuvet",
+    "area": "Malmö Centrum",
+    "menu": {
+      "kind": "kalhuvet",
+      "url": "https://www.kalhuvet.se/meny"
+    },
+    "note": "Lunch tis-fre 11.30-14, lör 12-14.30; ingen meny idag (stängt mån/sön eller veckans meny ej uppdaterad)"
+  },
+  {
+    "name": "Two Forks",
+    "area": "Malmö Centrum",
+    "menu": {
+      "kind": "twoforks",
+      "url": "https://www.twoforks.se/menu"
+    },
+    "note": "Lunch mån-fre 11.30-14, ingen lunch idag"
   }
 ]
