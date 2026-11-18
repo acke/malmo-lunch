@@ -206,5 +206,14 @@
       "Jhinga Korma"
     ],
     "note": "Veckomenyn kunde inte läsas (menyerna roterar var fjärde vecka, lästa från menybilderna på masalakitchen.se/lunch 2026-11-13)"
+  },
+  {
+    "name": "Miamarias",
+    "area": "Hamnen",
+    "menu": {
+      "kind": "miamarias",
+      "url": "https://miamarias.nu/"
+    },
+    "note": "Ingen meny idag (stängt, eller veckomenyn är inte uppe)"
   }
 ]
