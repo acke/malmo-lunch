@@ -160,17 +160,20 @@ def nordrest(page):
     return []
 
 
+BOXES = ("div", "section", "article", "aside", "header", "footer", "main", "nav", "a")  # tags an Elementor container can render as
+
+
 class _Widgets(html.parser.HTMLParser):
     """Visible Elementor widgets as (widget type, text, tab panel) rows; panel is (data-tab-index, aria-labelledby) or None.
 
     Reads whole widgets by their data-widget_type, so the owner's choice of tags inside one (h2 or h3, p or span) doesn't
-    matter. Tracks the <div> nesting, so everything inside a widget or container hidden on desktop is skipped and a tab
-    panel ends where its own div closes.
+    matter. Tracks the nesting of container tags (BOXES), so everything inside a widget or container hidden on desktop is
+    skipped and a tab panel ends where its own box closes.
     """
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.divs, self.rows = [], []  # divs: (hidden, panel, widget type or None) per open div
+        self.divs, self.rows = [], []  # divs: (hidden, panel, widget type or None) per open box
         self.text = None  # text of the open visible widget
         self.heads, self.head = [], None  # visible h1-h6 texts anywhere ('Vecka 47' is a bare h2 in a shortcode widget)
         self.seen = {}  # panel -> all its visible text
@@ -180,7 +183,7 @@ class _Widgets(html.parser.HTMLParser):
             self.text.append(" ")
         if re.fullmatch(r"h[1-6]", tag) and not (self.divs and self.divs[-1][0]):
             self.head = []
-        if tag != "div":
+        if tag not in BOXES:
             return
         a = dict(attrs)
         hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
@@ -197,7 +200,7 @@ class _Widgets(html.parser.HTMLParser):
         if re.fullmatch(r"h[1-6]", tag) and self.head is not None:
             self.heads.append(re.sub(r"\s+", " ", "".join(self.head)).strip())
             self.head = None
-        if tag != "div" or not self.divs:
+        if tag not in BOXES or not self.divs:
             return
         _, panel, widget = self.divs.pop()
         if widget:
@@ -229,6 +232,8 @@ def miamarias(page):
     week = next((m for text in v.heads for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
     if not week or int(week.group(1)) != today.isocalendar().week:
         return []  # the owner leaves last week's menu up (or hides the week) through closures
+    if any(re.search(r"st[äa]ng[dt]", h, re.I) for h in v.heads):
+        return []  # a pre-placed closure banner ('Semesterstängt v. 28–32') is shown; since 2026 'Vecka N' may be printed by a shortcode
     index = str(today.weekday() + 1)
     tab = next((panel for _, _, panel in v.rows if panel and panel[0] == index), None)  # the first visible tab set only
     if not tab or re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
