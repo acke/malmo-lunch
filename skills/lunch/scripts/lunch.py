@@ -161,7 +161,7 @@ def nordrest(page):
 
 
 class _Visible(html.parser.HTMLParser):
-    """Visible h2/p texts of an Elementor page, each tagged with its weekday tab panel ('monday-tab', or None).
+    """Visible h2/p texts of an Elementor page, each tagged with its tab panel as (data-tab-index, aria-labelledby), or None.
 
     Tracks the <div> nesting, so everything inside a widget or container hidden on desktop is skipped
     and a tab panel ends where its own div closes.
@@ -176,7 +176,8 @@ class _Visible(html.parser.HTMLParser):
         a = dict(attrs)
         if tag == "div":
             hidden = "elementor-hidden-desktop" in (a.get("class") or "") or bool(self.divs and self.divs[-1][0])
-            panel = a.get("aria-labelledby") if a.get("role") == "tabpanel" else None
+            # the index is 1-5 for Monday to Friday; the ids were renamed in 2026 ('e-n-tab-title-1259795101' -> 'monday-tab')
+            panel = (a.get("data-tab-index"), a.get("aria-labelledby")) if a.get("role") == "tabpanel" else None
             self.divs.append((hidden, panel or (self.divs[-1][1] if self.divs else None)))
         elif tag in ("h2", "p"):
             self.text = []
@@ -214,8 +215,9 @@ def miamarias(page):
     week = next((m for t, text, _ in v.rows if t == "h2" for m in [re.fullmatch(r"Vecka (\d+)", text)] if m), None)
     if not week or int(week.group(1)) != today.isocalendar().week:
         return []  # the owner leaves last week's menu up (or hides the week) through closures
-    tab = ["monday", "tuesday", "wednesday", "thursday", "friday"][today.weekday()] + "-tab"
-    rows = [(t, text) for t, text, panel in v.rows if panel == tab]
+    index = str(today.weekday() + 1)
+    tab = next((panel for _, _, panel in v.rows if panel and panel[0] == index), None)  # the first visible tab set only
+    rows = [(t, text) for t, text, panel in v.rows if panel == tab and tab]
     if re.search(r"st[äa]ng[dt]", v.seen.get(tab, ""), re.I):
         return []  # closed today: 'Stängt', 'Julstängt', 'restaurangen är stängd', in any visible tag
     dishes, head = {}, None
